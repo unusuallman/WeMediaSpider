@@ -287,7 +287,7 @@ def main():
     single_parser.add_argument("-p", "--pages", type=int, default=10, help="最大爬取页数")
     single_parser.add_argument("-d", "--days", type=int, default=30, help="爬取最近几天的文章")
     single_parser.add_argument("-c", "--content", action="store_true", help="是否获取文章内容")
-    single_parser.add_argument("-i", "--interval", type=int, default=2, help="请求间隔(秒)")
+    single_parser.add_argument("-i", "--interval", type=int, default=10, help="请求间隔(秒)")
     single_parser.add_argument("-o", "--output", help="输出文件路径")
     
     # batch 命令
@@ -296,7 +296,7 @@ def main():
     batch_parser.add_argument("-p", "--pages", type=int, default=10, help="每个公众号最大爬取页数")
     batch_parser.add_argument("-d", "--days", type=int, default=30, help="爬取最近几天的文章")
     batch_parser.add_argument("-c", "--content", action="store_true", help="是否获取文章内容")
-    batch_parser.add_argument("-i", "--interval", type=int, default=5, help="请求间隔(秒)")
+    batch_parser.add_argument("-i", "--interval", type=int, default=10, help="请求间隔(秒)")
     batch_parser.add_argument("-t", "--threads", type=int, default=3, help="线程数")
     batch_parser.add_argument("-o", "--output-dir", help="输出目录")
     batch_parser.add_argument("--db", action="store_true", help="是否使用数据库")

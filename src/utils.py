@@ -25,6 +25,30 @@ import csv
 from datetime import datetime
 from tqdm import tqdm
 import bs4
+from markdownify import MarkdownConverter
+
+
+class ImageBlockConverter(MarkdownConverter):
+    """
+    Create a custom MarkdownConverter that adds two newlines after an image
+    """
+    def convert_img(self, el, text, parent_tags):
+        alt = el.attrs.get('alt', None) or ''
+        src = el.attrs.get('src', None) or ''
+        if not src:
+            src = el.attrs.get('data-src', None) or ''
+        title = el.attrs.get('title', None) or ''
+        title_part = ' "%s"' % title.replace('"', r'\"') if title else ''
+        if ('_inline' in parent_tags
+                and el.parent.name not in self.options['keep_inline_images_in']):
+            return alt
+
+        return '\n![%s](%s%s)\n' % (alt, src, title_part)
+
+# Create shorthand method for conversion
+def md(soup, **options):
+    return ImageBlockConverter(**options).convert_soup(soup)
+
 
 
 def get_fakid(headers, tok, query):
@@ -144,20 +168,13 @@ def get_article_content(url, headers):
             return f"请求失败，状态码: {response.status_code}"
         
         # 解析HTML
-        soup = bs4.BeautifulSoup(response.text, 'html.parser')
-        
-        # 查找正文段落
-        soup_sel = soup.select("p")
-        content = ""
-        for c in soup_sel:
-            t = c.get_text().strip('\n')
-            if t != '':
-                content += t + "\n"
-                
-        # 提取有效内容部分，避免页面头尾部分
-        if len(content) > 150:
-            content = content[116:-11]
-            
+        soup = bs4.BeautifulSoup(response.text, 'lxml')
+        content_ele = soup.select(".rich_media_content")
+        if len(content_ele) == 0:
+            content = ""
+        else:
+            # 将HTML转换为Markdown
+            content = md(content_ele[0], keep_inline_images_in=["section", "span"])
         return content
         
     except Exception as e:

@@ -22,16 +22,16 @@
 # - 定期更新版本以获得最新功能和安全修复
 
 # 核心依赖
-requests>=2.25.0
-selenium>=4.1.0
-beautifulsoup4>=4.9.3
-tqdm>=4.50.0
-PyQt5>=5.15.0  # 仅GUI界面需要
+requests
+selenium
+beautifulsoup4
+tqdm
+markdownify
 
 # 数据处理
-pandas>=1.1.0
-numpy>=1.19.0
+pandas
+numpy
 
 # 其他工具
-webdriver-manager>=3.5.0  # 自动下载和管理ChromeDriver
-lxml>=4.6.0  # 提高BeautifulSoup的解析性能
+webdriver-manager  # 自动下载和管理ChromeDriver
+lxml # 提高BeautifulSoup的解析性能
