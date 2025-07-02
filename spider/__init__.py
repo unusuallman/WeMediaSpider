@@ -18,7 +18,7 @@
 """
 
 __version__ = "1.0"
-__author__ = "原作者基础上提取"
+__author__ = "seanzhang-zhichen"
 
 from .login import WeChatSpiderLogin
 from .scraper import WeChatScraper, BatchScraper
