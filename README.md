@@ -13,14 +13,14 @@
 - **多线程支持**: 可选的多线程并发爬取功能
 - **断点续爬**: 支持中断后继续爬取
 - **命令行接口**: 提供便捷的命令行工具
+- **markdown转换**: 支持将爬取的HTML转为markdown格式
 
 ## 安装方法
 
 1. 克隆仓库:
 
 ```bash
-git clone https://github.com/yourusername/py-spider-for-wechat.git
-cd py-spider-for-wechat
+git clone https://github.com/seanzhang-zhichen/wechat_spider.git
 ```
 
 2. 安装依赖:
