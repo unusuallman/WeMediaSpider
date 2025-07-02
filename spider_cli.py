@@ -25,10 +25,10 @@ import json
 from datetime import datetime, timedelta
 
 # 导入爬虫模块
-from src.login import WeChatSpiderLogin, quick_login
-from src.scraper import WeChatScraper, BatchScraper
-from src.database import ArticleDatabase
-from src.utils import save_to_csv
+from spider.login import WeChatSpiderLogin, quick_login
+from spider.scraper import WeChatScraper, BatchScraper
+from spider.database import ArticleDatabase
+from spider.utils import save_to_csv
 
 
 def login_command():
