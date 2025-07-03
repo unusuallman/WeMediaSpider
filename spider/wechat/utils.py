@@ -27,6 +27,9 @@ from tqdm import tqdm
 import bs4
 from markdownify import MarkdownConverter
 
+# 导入日志模块
+from log.utils import logger
+
 
 class ImageBlockConverter(MarkdownConverter):
     """
@@ -137,7 +140,7 @@ def get_articles_list(page_num, start_page, fakeid, token, headers):
             
             # 检查是否有文章列表
             if 'app_msg_list' not in dic:
-                print(f"警告: 未找到文章列表, 响应为: {dic}")
+                logger.warning(f"未找到文章列表, 响应为: {dic}")
                 break
                 
             for item in dic['app_msg_list']:
@@ -244,43 +247,41 @@ def filter_by_keywords(articles, keywords, field='title'):
 
 def save_to_csv(data, filename, fieldnames=None):
     """
-    将数据保存为CSV文件
+    保存数据到CSV文件
     
     Args:
         data: 要保存的数据列表
         filename: 文件名
-        fieldnames: 字段名列表，默认为None（自动获取）
+        fieldnames: 字段名列表，如果为None则使用data的第一项的keys
         
     Returns:
-        bool: 保存是否成功
+        bool: 是否保存成功
     """
-    try:
-        # 确保目录存在
-        directory = os.path.dirname(filename)
-        if directory and not os.path.exists(directory):
-            os.makedirs(directory)
+    if not data:
+        return False
         
-        # 如果fieldnames未提供，尝试从第一个数据项获取
-        if not fieldnames and data:
-            if isinstance(data[0], dict):
-                fieldnames = list(data[0].keys())
-        
-        # 必须有字段名
-        if not fieldnames:
-            print(f"保存CSV失败: 未提供字段名且无法自动获取")
+    # 如果未提供字段名，尝试从数据中获取
+    if not fieldnames:
+        if isinstance(data[0], dict):
+            fieldnames = list(data[0].keys())
+        else:
+            logger.error(f"保存CSV失败: 未提供字段名且无法自动获取")
             return False
+    
+    try:
+        # 创建目录
+        os.makedirs(os.path.dirname(filename) or '.', exist_ok=True)
         
         # 写入CSV
-        with open(filename, 'w', newline='', encoding='utf-8-sig') as f:
+        with open(filename, 'w', encoding='utf-8-sig', newline='') as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(data)
-            
-        print(f"数据已保存到: {filename}")
-        return True
         
+        logger.info(f"数据已保存到: {filename}")
+        return True
     except Exception as e:
-        print(f"保存CSV失败: {str(e)}")
+        logger.error(f"保存CSV失败: {str(e)}")
         return False
 
 
@@ -290,19 +291,19 @@ def mkdir(path):
     
     Args:
         path: 目录路径
-        
+    
     Returns:
-        bool: 创建是否成功
+        bool: 是否成功
     """
-    # 去除首尾空格和反斜杠
-    path = path.strip().rstrip("\\")
+    # 去除首尾空格
+    path = path.strip()
     
     # 判断路径是否存在
-    if not os.path.exists(path):
-        # 创建目录
-        os.makedirs(path)
-        print(f"{path} 创建成功")
+    if not path or os.path.exists(path):
+        logger.info(f"{path} 目录已存在")
         return True
-    else:
-        print(f"{path} 目录已存在")
-        return False 
+    
+    # 创建目录
+    os.makedirs(path)
+    logger.info(f"{path} 创建成功")
+    return True 

@@ -32,8 +32,9 @@ import threading
 from datetime import datetime, date, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from .utils import get_fakid, get_articles_list, get_article_content, format_time
-from .database import ArticleDatabase
+# 导入日志模块
+from log.utils import logger
+from wechat.utils import get_fakid, get_articles_list, get_article_content, format_time
 
 
 class WeChatScraper:
@@ -193,7 +194,7 @@ class WeChatScraper:
             article['content'] = content
             return article
         except Exception as e:
-            print(f"获取文章内容失败: {e}")
+            logger.error(f"获取文章内容失败: {e}")
             article['content'] = f"获取内容失败: {str(e)}"
             return article
     
@@ -249,24 +250,28 @@ class WeChatScraper:
         
         try:
             # 确保目录存在
-            directory = os.path.dirname(filename)
-            if directory and not os.path.exists(directory):
-                os.makedirs(directory)
+            os.makedirs(os.path.dirname(os.path.abspath(filename)), exist_ok=True)
             
-            # 字段名
-            fieldnames = ['name', 'title', 'link', 'digest', 'publish_time', 'publish_timestamp', 'content']
-            
-            # 写入CSV
             with open(filename, 'w', newline='', encoding='utf-8-sig') as f:
-                writer = csv.DictWriter(f, fieldnames=fieldnames)
-                writer.writeheader()
-                writer.writerows(articles)
+                writer = csv.writer(f)
                 
-            print(f"文章已保存到: {filename}")
+                # 写入标题行
+                writer.writerow(['公众号', '标题', '发布时间', '链接', '内容'])
+                
+                # 写入数据行
+                for article in articles:
+                    writer.writerow([
+                        article['name'],
+                        article['title'],
+                        article.get('publish_time', ''),
+                        article['link'],
+                        article.get('content', '')
+                    ])
+                    
             return True
             
         except Exception as e:
-            print(f"保存CSV失败: {e}")
+            logger.error(f"保存CSV失败: {e}")
             return False
     
     def _trigger_progress(self, current, total):
@@ -276,9 +281,10 @@ class WeChatScraper:
     
     def _trigger_error(self, error_msg):
         """触发错误回调"""
-        print(f"错误: {error_msg}")
         if self.callbacks['error']:
             self.callbacks['error'](error_msg)
+        else:
+            logger.error(f"错误: {error_msg}")
     
     def _trigger_complete(self, result):
         """触发完成回调"""
@@ -287,20 +293,29 @@ class WeChatScraper:
     
     def _trigger_status(self, account_name, status, message):
         """触发状态回调"""
-        print(f"{account_name}: {message}")
         if self.callbacks['status']:
             self.callbacks['status'](account_name, status, message)
+        else:
+            logger.info(f"{account_name}: {message}")
 
 
-class BatchScraper:
-    """批量爬取管理器"""
+class BatchWeChatScraper:
+    """批量爬取类"""
     
     def __init__(self):
-        """初始化批量爬取管理器"""
+        """初始化批量爬取器"""
         self.scraper = WeChatScraper()
         self.is_cancelled = False
-        self.batch_id = None
-        self.db = None
+        
+        # 默认配置
+        self.default_config = {
+            'max_pages_per_account': 10,
+            'request_interval': 10,
+            'account_interval': (15, 30),
+            'use_threading': False,
+            'max_workers': 3,
+            'include_content': False
+        }
         
         # 回调函数
         self.callbacks = {
@@ -308,18 +323,6 @@ class BatchScraper:
             'account_status': None,
             'batch_completed': None,
             'error_occurred': None
-        }
-        
-        # 默认配置
-        self.default_config = {
-            'max_pages_per_account': 100,  # 每个公众号最多爬取的页数
-            'request_interval': 60,  # 请求间隔（秒）
-            'account_interval': (15, 30),  # 账号间隔范围（秒）
-            'use_threading': False,  # 是否使用多线程
-            'max_workers': 3,  # 最大线程数
-            'include_content': False,  # 是否获取文章内容
-            'use_database': False,  # 是否使用数据库
-            'db_file': 'wechat_articles.db'  # 数据库文件
         }
     
     def set_callback(self, event_type, callback_func):
@@ -334,7 +337,7 @@ class BatchScraper:
             self.callbacks[event_type] = callback_func
     
     def cancel_batch_scrape(self):
-        """取消批量爬取任务"""
+        """取消批量爬取"""
         self.is_cancelled = True
     
     def start_batch_scrape(self, config):
@@ -348,7 +351,6 @@ class BatchScraper:
                 - end_date: 结束日期
                 - token: 访问token
                 - headers: 请求头
-                - batch_id: 批次ID（可选）
                 - output_file: 输出文件（可选）
                 - 其他配置参数（见default_config）
                 
@@ -359,19 +361,6 @@ class BatchScraper:
         for key, value in self.default_config.items():
             if key not in config:
                 config[key] = value
-        
-        # 准备批次ID
-        self.batch_id = config.get('batch_id', f"batch_{int(time.time())}")
-        
-        # 初始化数据库
-        if config.get('use_database', False):
-            self.db = ArticleDatabase(config.get('db_file', 'wechat_articles.db'))
-            self.db.create_batch(
-                self.batch_id,
-                config['start_date'],
-                config['end_date'],
-                config['accounts']
-            )
         
         # 设置token和headers
         self.scraper.set_token(config['token'])
@@ -403,15 +392,11 @@ class BatchScraper:
             # 单线程顺序爬取
             all_articles = self._process_accounts_sequential(config, accounts, start_date, end_date)
         
-        # 保存结果
+        # 保存结果到CSV
         if not self.is_cancelled:
             output_file = config.get('output_file')
             if output_file:
                 self.scraper.save_articles_to_csv(all_articles, output_file)
-            
-            # 完成批次
-            if self.db:
-                self.db.complete_batch(self.batch_id, len(all_articles))
             
             # 触发完成回调
             self._trigger_batch_completed(len(all_articles))
@@ -560,43 +545,37 @@ class BatchScraper:
                     # 获取内容
                     article = self.scraper.get_article_content_by_url(article)
                     
-                    # 保存到数据库
-                    if self.db:
-                        self.db.save_article(article, self.batch_id)
-                        
                     # 请求间延迟
                     if i < len(articles_in_range) - 1:
                         delay = random.uniform(1, config.get('request_interval', 60) / 10)
                         time.sleep(delay)
                         
                 except Exception as e:
-                    print(f"获取文章内容失败: {e}")
+                    logger.error(f"获取文章内容失败: {e}")
                     continue
-        elif self.db:
-            # 即使不获取内容，也保存基本信息到数据库
-            for article in articles_in_range:
-                self.db.save_article(article, self.batch_id)
         
         return articles_in_range
     
     def _trigger_progress_updated(self, current, total):
         """触发进度更新回调"""
         if self.callbacks['progress_updated']:
-            self.callbacks['progress_updated'](self.batch_id, current, total)
+            self.callbacks['progress_updated'](current, total)
     
     def _trigger_account_status(self, account_name, status, message):
         """触发账号状态回调"""
-        print(f"{account_name}: {message}")
         if self.callbacks['account_status']:
             self.callbacks['account_status'](account_name, status, message)
+        else:
+            logger.info(f"{account_name}: {message}")
     
     def _trigger_batch_completed(self, total_articles):
         """触发批次完成回调"""
         if self.callbacks['batch_completed']:
-            self.callbacks['batch_completed'](self.batch_id, total_articles)
+            self.callbacks['batch_completed'](total_articles)
     
     def _trigger_error(self, account_name, error_message):
         """触发错误回调"""
-        print(f"错误 - {account_name}: {error_message}")
-        if self.callbacks['error_occurred']:
-            self.callbacks['error_occurred'](account_name, error_message) 
+        if self.callbacks['error']:
+            self.callbacks['error'](account_name, error_message)
+        else:
+            logger.error(f"错误 - {account_name}: {error_message}") 

@@ -21,6 +21,5 @@ __version__ = "1.0"
 __author__ = "seanzhang-zhichen"
 
 from .login import WeChatSpiderLogin
-from .scraper import WeChatScraper, BatchScraper
-from .database import ArticleDatabase
+from .scraper import WeChatScraper, BatchWeChatScraper
 from .utils import get_timestamp, format_time 

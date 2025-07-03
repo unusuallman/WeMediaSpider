@@ -39,6 +39,9 @@ from selenium.webdriver.support import expected_conditions as EC
 import requests
 import re
 
+# 导入日志模块
+from log.utils import logger
+
 # 配置常量
 CACHE_FILE = 'wechat_cache.json'
 CACHE_EXPIRE_HOURS = 24 * 4  # 缓存有效期（小时），4天
@@ -72,17 +75,17 @@ class WeChatSpiderLogin:
             try:
                 with open(self.cache_file, 'w', encoding='utf-8') as f:
                     json.dump(cache_data, f, ensure_ascii=False, indent=2)
-                print(f"[OK] 登录信息已保存到缓存文件 {self.cache_file}")
+                logger.success(f"登录信息已保存到缓存文件 {self.cache_file}")
                 return True
             except Exception as e:
-                print(f"[ERROR] 保存缓存失败: {e}")
+                logger.error(f"保存缓存失败: {e}")
                 return False
         return False
 
     def load_cache(self):
         """从缓存文件加载token和cookies"""
         if not os.path.exists(self.cache_file):
-            print("[INFO] 缓存文件不存在，需要重新登录")
+            logger.info("缓存文件不存在，需要重新登录")
             return False
         
         try:
@@ -94,16 +97,16 @@ class WeChatSpiderLogin:
             hours_diff = (current_time - cache_time).total_seconds() / 3600
             
             if hours_diff > self.cache_expire_hours:
-                print(f"[INFO] 缓存已过期（{hours_diff:.1f}小时前），需要重新登录")
+                logger.info(f"缓存已过期（{hours_diff:.1f}小时前），需要重新登录")
                 return False
             
             self.token = cache_data['token']
             self.cookies = cache_data['cookies']
-            print(f"[OK] 从缓存加载登录信息（{hours_diff:.1f}小时前保存）")
+            logger.info(f"从缓存加载登录信息（{hours_diff:.1f}小时前保存）")
             return True
             
         except Exception as e:
-            print(f"[ERROR] 读取缓存失败: {e}，需要重新登录")
+            logger.error(f"读取缓存失败: {e}，需要重新登录")
             return False
 
     def validate_cache(self):
@@ -143,20 +146,20 @@ class WeChatSpiderLogin:
             
             if 'base_resp' in result:
                 if result['base_resp']['ret'] == 0:
-                    print("[OK] 缓存的登录信息验证有效")
+                    logger.success("缓存的登录信息验证有效")
                     return True
                 elif result['base_resp']['ret'] in (-6, 200013):
-                    print("[WARN] 缓存的token已失效")
+                    logger.warning("缓存的token已失效")
                     return False
                 else:
-                    print(f"[WARN] 验证失败: {result['base_resp'].get('err_msg', '未知错误')}")
+                    logger.warning(f"验证失败: {result['base_resp'].get('err_msg', '未知错误')}")
                     return False
             else:
-                print("[WARN] 验证响应格式异常")
+                logger.warning("验证响应格式异常")
                 return False
                 
         except Exception as e:
-            print(f"[ERROR] 验证缓存时发生错误: {e}")
+            logger.error(f"验证缓存时发生错误: {e}")
             return False
 
     def clear_cache(self):
@@ -164,10 +167,10 @@ class WeChatSpiderLogin:
         try:
             if os.path.exists(self.cache_file):
                 os.remove(self.cache_file)
-                print("[INFO] 缓存已清除")
+                logger.info("缓存已清除")
             return True
         except Exception as e:
-            print(f"[ERROR] 清除缓存失败: {e}")
+            logger.error(f"清除缓存失败: {e}")
             return False
 
     def _setup_chrome_options(self):
@@ -208,18 +211,18 @@ class WeChatSpiderLogin:
             elif system in ("Linux", "Darwin"):  # Linux或Mac
                 subprocess.run(["pkill", "-f", "chrome"], 
                               stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-            print("[OK] 残留浏览器进程已清理")
+            logger.debug("残留浏览器进程已清理")
         except Exception as e:
-            print(f"[WARN] 清理Chrome进程时出现警告: {e}")
+            logger.warning(f"清理Chrome进程时出现警告: {e}")
 
     def _cleanup_temp_files(self):
         """清理临时文件"""
         if self.temp_user_data_dir and os.path.exists(self.temp_user_data_dir):
             try:
                 shutil.rmtree(self.temp_user_data_dir, ignore_errors=True)
-                print("[OK] 临时用户数据目录已清理")
+                logger.debug("临时用户数据目录已清理")
             except Exception as e:
-                print(f"[WARN] 清理临时目录时出现警告: {e}")
+                logger.warning(f"清理临时目录时出现警告: {e}")
 
     def login(self):
         """
@@ -228,23 +231,23 @@ class WeChatSpiderLogin:
         Returns:
             bool: 登录是否成功
         """
-        print("\n" + "="*60)
-        print("开始登录微信公众号平台...")
-        print("="*60)
+        logger.info("\n" + "="*60)
+        logger.info("开始登录微信公众号平台...")
+        logger.info("="*60)
         
         # 检查缓存
         if self.load_cache() and self.validate_cache():
-            print("[OK] 使用有效的缓存登录信息")
+            logger.success("使用有效的缓存登录信息")
             return True
         else:
-            print("[INFO] 缓存无效或不存在，需要重新扫码登录")
+            logger.info("缓存无效或不存在，需要重新扫码登录")
             self.clear_cache()
         
         # 清理残留进程
         self._cleanup_chrome_processes()
         
         try:
-            print("[INFO] 正在启动Chrome浏览器...")
+            logger.info("正在启动Chrome浏览器...")
             
             # 配置Chrome选项
             chrome_options = self._setup_chrome_options()
@@ -253,9 +256,9 @@ class WeChatSpiderLogin:
             try:
                 service = ChromeService()
                 self.driver = webdriver.Chrome(service=service, options=chrome_options)
-                print("[OK] Chrome浏览器启动成功")
+                logger.success("Chrome浏览器启动成功")
             except Exception as e:
-                print(f"[ERROR] Chrome浏览器启动失败: {e}")
+                logger.error(f"Chrome浏览器启动失败: {e}")
                 return False
 
             # 隐藏自动化特征
@@ -264,12 +267,12 @@ class WeChatSpiderLogin:
             )
 
             # 访问微信公众号平台
-            print("[INFO] 正在访问微信公众号平台...")
+            logger.info("正在访问微信公众号平台...")
             self.driver.get('https://mp.weixin.qq.com/')
-            print("[OK] 页面加载完成")
+            logger.success("页面加载完成")
             
-            print("[INFO] 请在浏览器窗口中扫码登录...")
-            print("[INFO] 等待登录完成（最长等待5分钟）...")
+            logger.info("请在浏览器窗口中扫码登录...")
+            logger.info("等待登录完成（最长等待5分钟）...")
 
             # 等待登录成功（URL中包含token）
             wait = WebDriverWait(self.driver, 300)  # 5分钟超时
@@ -277,30 +280,30 @@ class WeChatSpiderLogin:
             
             # 提取token
             current_url = self.driver.current_url
-            print("[OK] 检测到登录成功！正在获取登录信息...")
+            logger.success("检测到登录成功！正在获取登录信息...")
             
             token_match = re.search(r'token=(\d+)', current_url)
             if token_match:
                 self.token = token_match.group(1)
-                print(f"[OK] Token获取成功: {self.token}")
+                logger.success(f"Token获取成功: {self.token}")
             else:
-                print("[ERROR] 无法从URL中提取token")
+                logger.error("无法从URL中提取token")
                 return False
 
             # 获取cookies
             raw_cookies = self.driver.get_cookies()
             self.cookies = {item['name']: item['value'] for item in raw_cookies}
-            print(f"[OK] Cookies获取成功，共{len(self.cookies)}个")
+            logger.success(f"Cookies获取成功，共{len(self.cookies)}个")
             
             # 保存到缓存
             if self.save_cache():
-                print("[OK] 登录信息已保存到缓存")
+                logger.success("登录信息已保存到缓存")
             
-            print("[OK] 登录完成！")
+            logger.success("登录完成！")
             return True
             
         except Exception as e:
-            print(f"[ERROR] 登录过程中出现错误: {e}")
+            logger.error(f"登录过程中出现错误: {e}")
             return False
             
         finally:
@@ -308,7 +311,7 @@ class WeChatSpiderLogin:
             if self.driver:
                 try:
                     self.driver.quit()
-                    print("[OK] 浏览器已关闭")
+                    logger.debug("浏览器已关闭")
                 except:
                     pass
             
@@ -355,7 +358,7 @@ class WeChatSpiderLogin:
         Returns:
             bool: 退出是否成功
         """
-        print("[INFO] 正在退出登录...")
+        logger.info("正在退出登录...")
         
         # 清除缓存和状态
         self.clear_cache()
@@ -366,7 +369,7 @@ class WeChatSpiderLogin:
         self._cleanup_chrome_processes()
         self._cleanup_temp_files()
         
-        print("[OK] 退出登录完成")
+        logger.success("退出登录完成")
         return True
 
     def get_token(self):

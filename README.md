@@ -1,6 +1,6 @@
-# 微信公众号爬虫模块
+# 内容爬虫工具
 
-这是一个专门用于爬取微信公众号文章的Python模块，提供了完整的功能集，从登录、搜索公众号到批量爬取文章内容。该模块不依赖于GUI界面，可以作为独立的库在任何Python项目中使用。
+这是一个用于爬取多平台内容的Python工具，目前主要支持微信公众号文章爬取，提供了完整的功能集，包括登录、搜索公众号、批量爬取文章内容等。该工具可以通过命令行使用，也可以作为独立的库在任何Python项目中导入使用。
 
 ## 主要功能
 
@@ -9,7 +9,8 @@
 - **文章列表获取**: 批量获取公众号的历史文章列表
 - **文章内容爬取**: 抓取文章的完整内容
 - **日期过滤**: 根据发布日期筛选文章
-- **数据存储**: 支持CSV和SQLite数据库存储
+- **数据存储**: 支持CSV和多种数据库存储（SQLite、MySQL等）
+- **多平台支持**: 架构设计支持多平台内容爬取（目前主要支持微信）
 - **多线程支持**: 可选的多线程并发爬取功能
 - **断点续爬**: 支持中断后继续爬取
 - **命令行接口**: 提供便捷的命令行工具
@@ -32,132 +33,127 @@ pip install -r requirements.txt
 ## 目录结构
 
 ```
-spider/
-  ├── __init__.py         # 包初始化文件
-  ├── login.py            # 登录功能模块
-  ├── scraper.py          # 爬虫核心模块
-  ├── database.py         # 数据库管理模块
-  ├── utils.py            # 工具函数模块
-  ├── example.py          # 示例使用脚本
-  └── README.md           # 说明文档
+wechat_spider/
+  ├── README.md              # 说明文档
+  ├── requirements.txt       # 依赖文件
+  └── spider/                # 爬虫主目录
+      ├── db/                # 数据库相关模块
+      │   ├── __init__.py    # 包初始化文件
+      │   ├── factory.py     # 数据库工厂类
+      │   ├── interface.py   # 数据库接口定义
+      │   ├── mysql.py       # MySQL数据库实现
+      │   └── sqlite.py      # SQLite数据库实现
+      ├── log/               # 日志相关模块
+      │   ├── __init__.py    # 包初始化文件
+      │   └── utils.py       # 日志工具函数
+      ├── main.py            # 主模块和命令行入口
+      └── wechat/            # 微信爬虫专用模块
+          ├── __init__.py    # 包初始化文件
+          ├── login.py       # 登录功能模块
+          ├── run.py         # 运行管理模块
+          ├── scraper.py     # 爬虫核心模块
+          └── utils.py       # 工具函数模块
 ```
 
 ## 使用方法
 
-### 基本使用
+### 命令行使用
 
-```python
-from spider.login import WeChatSpiderLogin, quick_login
-from spider.scraper import WeChatScraper
+项目提供了命令行工具 `spider/main.py`:
 
-# 1. 登录获取token和cookie
-token, cookies, headers = quick_login()
+```bash
+# 登录微信公众平台
+python spider/main.py wechat login
 
-# 2. 创建爬虫实例
-scraper = WeChatScraper(token, headers)
+# 搜索公众号
+python spider/main.py wechat search "公众号名称" -o "结果保存路径.json"
 
-# 3. 搜索公众号
-results = scraper.search_account("公众号名称")
-fakeid = results[0]['wpub_fakid']
+# 爬取单个公众号
+python spider/main.py wechat single "公众号名称" -p 10 -d 30 -c -o "结果保存路径.csv" --db
 
-# 4. 获取文章列表
-articles = scraper.get_account_articles("公众号名称", fakeid, max_pages=10)
-
-# 5. 获取文章内容
-for article in articles[:5]:  # 获取前5篇文章的内容
-    article = scraper.get_article_content_by_url(article)
-    print(f"标题: {article['title']}")
-    print(f"内容长度: {len(article['content'])}")
-
-# 6. 保存结果
-scraper.save_articles_to_csv(articles, "articles.csv")
+# 批量爬取多个公众号
+python spider/main.py wechat batch "账号列表文件.txt" -p 10 -d 30 -c -t 3 -o "输出目录" --db
 ```
 
-### 批量爬取
+使用 `python spider/main.py --help` 查看完整帮助信息。
+
+### 作为库使用
 
 ```python
-from spider.login import quick_login
-from spider.scraper import BatchScraper
+from spider.wechat.run import WeChatSpiderRunner
 
-# 1. 登录获取token和cookie
-token, cookies, headers = quick_login()
+# 创建爬虫实例
+wechat_runner = WeChatSpiderRunner()
 
-# 2. 创建批量爬虫实例
-batch_scraper = BatchScraper()
+# 登录
+if not wechat_runner.login():
+    print("微信登录失败")
+    exit(1)
 
-# 3. 设置回调函数
-def progress_callback(batch_id, current, total):
-    print(f"进度: {current}/{total}")
+# 搜索公众号
+accounts = wechat_runner.search_account("腾讯科技")
+if not accounts:
+    print("未找到匹配的微信公众号")
+    exit(1)
 
-batch_scraper.set_callback('progress_updated', progress_callback)
-
-# 4. 准备配置
-config = {
-    'accounts': ["公众号1", "公众号2", "公众号3"],
-    'start_date': "2023-01-01",
-    'end_date': "2023-12-31",
-    'token': token,
-    'headers': headers,
-    'max_pages_per_account': 10,
-    'use_threading': True,
-    'max_workers': 3,
-    'include_content': True,
-    'use_database': True,
-    'db_file': "articles.db",
-    'output_file': "batch_articles.csv"
-}
-
-# 5. 开始爬取
-articles = batch_scraper.start_batch_scrape(config)
+# 爬取单个公众号
+wechat_runner.scrape_single_account(
+    "腾讯科技",
+    pages=5,
+    days=7,
+    include_content=True,
+    output_file="腾讯科技.csv"
+)
 ```
 
-### 数据库操作
+## 数据库使用
 
 ```python
-from spider.database import ArticleDatabase
+from spider.db.factory import DatabaseFactory
 
-# 创建数据库实例
-db = ArticleDatabase("articles.db")
+# 创建数据库实例 - SQLite (默认)
+db = DatabaseFactory.create_database('sqlite', db_file="articles.db")
+
+# 创建数据库实例 - MySQL
+# db = DatabaseFactory.create_database('mysql', host="localhost", user="root", password="password", database="articles")
+
+# 保存账号
+account_id = db.save_account(
+    name="公众号名称",
+    platform="wechat",
+    account_id="fakeid"
+)
+
+# 保存文章
+db.save_article(
+    account_id=account_id,
+    title="文章标题",
+    url="文章链接",
+    publish_time="2023-01-01 12:00:00",
+    content="文章内容",
+    details={"digest": "摘要", "publish_timestamp": 1672531200}
+)
 
 # 查询文章
 articles = db.get_articles(
-    account_name="公众号名称",
+    account_id=account_id,
     start_date="2023-01-01",
     end_date="2023-12-31",
     keywords=["关键词1", "关键词2"],
     limit=100
 )
-
-# 获取唯一公众号列表
-accounts = db.get_unique_accounts()
 ```
-
-## 命令行工具
-
-项目根目录下提供了命令行工具 `spider_cli.py`:
-
-```bash
-# 登录
-python spider_cli.py login
-
-# 搜索公众号
-python spider_cli.py search "公众号名称"
-
-# 爬取单个公众号
-python spider_cli.py single "公众号名称" --pages 10 --days 30 --content
-
-# 批量爬取
-python spider_cli.py batch accounts.txt --pages 10 --days 30 --content --db
-```
-
-使用 `python spider_cli.py --help` 查看完整帮助信息。
 
 ## 注意事项
 
-1. **请求间隔**: 建议将请求间隔设置为适当的值（如5秒以上），避免被微信公众平台限制访问。
-2. **登录缓存**: 登录信息会缓存到本地文件，有效期为4天，期间可重复使用而无需重新登录。
+1. **请求间隔**: 建议将请求间隔设置为适当的值（默认10秒），避免被微信公众平台限制访问。
+2. **登录缓存**: 登录信息会缓存到本地文件，有效期有限，期间可重复使用而无需重新登录。
 3. **数据库存储**: 建议启用数据库存储，便于后续查询和分析。
-4. **多线程限制**: 过多的线程可能导致账号被限制，建议将`max_workers`控制在3-5之间。
+4. **多线程限制**: 过多的线程可能导致账号被限制，建议将`threads`控制在3-5之间。
+5. **数据库选择**: 
+   - 对于小型项目，SQLite足够使用
+   - 对于大型项目，推荐使用MySQL等关系型数据库
+   - 需要使用MySQL时，请先安装pymysql: `pip install pymysql`
 
 ## 依赖项
 
@@ -166,7 +162,12 @@ python spider_cli.py batch accounts.txt --pages 10 --days 30 --content --db
 - selenium
 - beautifulsoup4
 - tqdm
+- markdownify
 - pandas
+- numpy
+- loguru
+- webdriver-manager
+- lxml
 
 详见 `requirements.txt`。
 
