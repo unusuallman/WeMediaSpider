@@ -14,12 +14,12 @@
 import os
 import sys
 import argparse
-from log.utils import setup_logger, logger
+from spider.log.utils import setup_logger, logger
 # 目前只导入微信爬虫，后续可以添加其他平台的爬虫
-from wechat.run import WeChatSpiderRunner, login as wechat_login
-from wechat.run import search as wechat_search
-from wechat.run import scrape_account as wechat_scrape_account
-from wechat.run import batch_scrape as wechat_batch_scrape
+from spider.wechat.run import WeChatSpiderRunner, login as wechat_login
+from spider.wechat.run import search as wechat_search
+from spider.wechat.run import scrape_account as wechat_scrape_account
+from spider.wechat.run import batch_scrape as wechat_batch_scrape
 
 # 未来可以导入其他平台的爬虫
 # from spider.weibo.run import WeiboSpiderRunner

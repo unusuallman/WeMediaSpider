@@ -33,8 +33,8 @@ from datetime import datetime, date, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # 导入日志模块
-from log.utils import logger
-from wechat.utils import get_fakid, get_articles_list, get_article_content, format_time
+from spider.log.utils import logger
+from spider.wechat.utils import get_fakid, get_articles_list, get_article_content, format_time
 
 
 class WeChatScraper:

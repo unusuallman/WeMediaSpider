@@ -2,6 +2,16 @@
 
 这是一个用于爬取多平台内容的Python工具，目前主要支持微信公众号文章爬取，提供了完整的功能集，包括登录、搜索公众号、批量爬取文章内容等。该工具可以通过命令行使用，也可以作为独立的库在任何Python项目中导入使用。
 
+## 版本说明
+
+当前版本为 2.0，相比早期版本有以下改进：
+
+- 重构了项目结构，将main.py移至根目录，便于命令行直接调用
+- 完善了包结构，支持作为Python包导入使用
+- 优化了数据库接口，提供工厂模式创建数据库实例
+- 增强了日志系统，支持可配置的日志级别和输出方式
+- 项目架构设计为支持多平台内容爬取（目前实现了微信公众号，后续将支持微博、知乎等平台）
+
 ## 主要功能
 
 - **自动登录**: 使用Selenium自动登录微信公众平台，获取token和cookie
@@ -34,9 +44,11 @@ pip install -r requirements.txt
 
 ```
 wechat_spider/
+  ├── main.py                # 主模块和命令行入口
   ├── README.md              # 说明文档
   ├── requirements.txt       # 依赖文件
   └── spider/                # 爬虫主目录
+      ├── __init__.py        # 包初始化文件
       ├── db/                # 数据库相关模块
       │   ├── __init__.py    # 包初始化文件
       │   ├── factory.py     # 数据库工厂类
@@ -46,7 +58,6 @@ wechat_spider/
       ├── log/               # 日志相关模块
       │   ├── __init__.py    # 包初始化文件
       │   └── utils.py       # 日志工具函数
-      ├── main.py            # 主模块和命令行入口
       └── wechat/            # 微信爬虫专用模块
           ├── __init__.py    # 包初始化文件
           ├── login.py       # 登录功能模块
@@ -59,23 +70,23 @@ wechat_spider/
 
 ### 命令行使用
 
-项目提供了命令行工具 `spider/main.py`:
+项目提供了命令行工具 `main.py`:
 
 ```bash
 # 登录微信公众平台
-python spider/main.py wechat login
+python main.py wechat login
 
 # 搜索公众号
-python spider/main.py wechat search "公众号名称" -o "结果保存路径.json"
+python main.py wechat search "公众号名称" -o "结果保存路径.json"
 
 # 爬取单个公众号
-python spider/main.py wechat single "公众号名称" -p 10 -d 30 -c -o "结果保存路径.csv" --db
+python main.py wechat single "公众号名称" -p 10 -d 30 -c -o "结果保存路径.csv" --db
 
 # 批量爬取多个公众号
-python spider/main.py wechat batch "账号列表文件.txt" -p 10 -d 30 -c -t 3 -o "输出目录" --db
+python main.py wechat batch "账号列表文件.txt" -p 10 -d 30 -c -t 3 -o "输出目录" --db
 ```
 
-使用 `python spider/main.py --help` 查看完整帮助信息。
+使用 `python main.py --help` 查看完整帮助信息。
 
 ### 作为库使用
 
@@ -170,6 +181,18 @@ articles = db.get_articles(
 - lxml
 
 详见 `requirements.txt`。
+
+## 未来规划
+
+项目计划在后续版本中添加以下功能：
+
+1. **微博内容爬虫**: 支持爬取微博用户、话题和搜索结果
+2. **知乎内容爬虫**: 支持爬取知乎专栏、问答和用户文章
+3. **内容分析功能**: 提供基础的文本分析和数据可视化功能
+4. **异步爬虫**: 使用asyncio提高爬取效率
+5. **代理支持**: 添加代理IP池，提高稳定性和规避封禁
+
+欢迎贡献代码或提交Issue！
 
 ## 许可证
 

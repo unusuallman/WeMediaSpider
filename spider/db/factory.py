@@ -8,9 +8,9 @@
 用于创建不同类型的数据库实例的工厂类。
 """
 
-from db.interface import DatabaseInterface
-from db.sqlite import SQLiteDatabase
-from db.mysql import MySQLDatabase
+from .interface import DatabaseInterface
+from .sqlite import SQLiteDatabase
+from .mysql import MySQLDatabase
 
 
 class DatabaseFactory:

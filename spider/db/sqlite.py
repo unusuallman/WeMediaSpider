@@ -16,8 +16,8 @@ import threading
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
-from db.interface import DatabaseInterface
-from log.utils import logger
+from spider.db.interface import DatabaseInterface
+from spider.log.utils import logger
 
 class SQLiteDatabase(DatabaseInterface):
     """SQLite数据库实现"""

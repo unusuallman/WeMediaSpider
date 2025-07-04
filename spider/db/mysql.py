@@ -11,8 +11,8 @@ MySQL数据库实现
 import threading
 from typing import List, Dict, Any, Optional
 
-from db.interface import DatabaseInterface
-from log.utils import logger
+from .interface import DatabaseInterface
+from spider.log.utils import logger
 
 
 class MySQLDatabase(DatabaseInterface):

@@ -18,12 +18,12 @@ import json
 from datetime import datetime, timedelta
 
 # 导入日志模块
-from log.utils import logger
+from spider.log.utils import logger
 
 # 导入爬虫模块
-from wechat.login import WeChatSpiderLogin, quick_login
-from wechat.scraper import WeChatScraper, BatchWeChatScraper
-from db.factory import DatabaseFactory
+from .login import WeChatSpiderLogin, quick_login
+from .scraper import WeChatScraper, BatchWeChatScraper
+from spider.db.factory import DatabaseFactory
 
 
 class WeChatSpiderRunner:

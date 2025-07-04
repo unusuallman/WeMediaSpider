@@ -28,7 +28,7 @@ import bs4
 from markdownify import MarkdownConverter
 
 # 导入日志模块
-from log.utils import logger
+from spider.log.utils import logger
 
 
 class ImageBlockConverter(MarkdownConverter):

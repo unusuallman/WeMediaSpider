@@ -40,7 +40,7 @@ import requests
 import re
 
 # 导入日志模块
-from log.utils import logger
+from spider.log.utils import logger
 
 # 配置常量
 CACHE_FILE = 'wechat_cache.json'
