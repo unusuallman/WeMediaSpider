@@ -335,6 +335,7 @@ class WeChatSpiderRunner:
                 account = db.get_account(name=account_name, platform='wechat')
 
                 if not account:
+                    logger.error(f"账号不存在: {account_name}")
                     continue
                     
                 success = db.save_article(
@@ -350,6 +351,7 @@ class WeChatSpiderRunner:
                 )
                 
                 if success:
+                    logger.success(f"成功保存文章: {article.get('title', '')}")
                     saved_count += 1
             
             logger.success(f"数据库保存完成，成功保存 {saved_count} 篇文章")

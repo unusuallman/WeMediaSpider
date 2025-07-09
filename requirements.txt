@@ -16,3 +16,4 @@ loguru
 # 其他工具
 webdriver-manager  # 自动下载和管理ChromeDriver
 lxml # 提高BeautifulSoup的解析性能
+schedule  # 用于定时任务

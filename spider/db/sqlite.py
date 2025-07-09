@@ -52,7 +52,6 @@ class SQLiteDatabase(DatabaseInterface):
                     details TEXT,
                     created_at INTEGER DEFAULT (strftime('%s', 'now')),
                     updated_at INTEGER DEFAULT (strftime('%s', 'now')),
-                    UNIQUE(platform, account_id),
                     UNIQUE(platform, name)
                 )
             ''')
@@ -96,32 +95,31 @@ class SQLiteDatabase(DatabaseInterface):
             timestamp = int(time.time())
             
             try:
-                # 检查账号是否已存在
-                if account_id:
-                    cursor.execute(
-                        "SELECT id FROM accounts WHERE platform=? AND account_id=?", 
-                        (platform, account_id)
-                    )
-                else:
-                    cursor.execute(
-                        "SELECT id FROM accounts WHERE platform=? AND name=?", 
-                        (platform, name)
-                    )
+                # 检查账号是否已存在（同时检查两个唯一约束条件）
+                # 优先按平台和名称查找，这是始终唯一的
+                cursor.execute(
+                    "SELECT id FROM accounts WHERE platform=? AND name=?", 
+                    (platform, name)
+                )
                 existing = cursor.fetchone()
                 
                 if existing:
-                    logger.info(f"更新已有账号: {name}, {platform}, {account_id}")
+                    logger.info(f"账号已存在: {name}, {platform}, {account_id}")
                     # 更新已有账号
                     account_db_id = existing[0]
-                    cursor.execute('''
-                        UPDATE accounts SET 
-                        name=?, account_id=?, details=?, updated_at=?
-                        WHERE id=?
-                    ''', (name, account_id or "", details_json, timestamp, account_db_id))
                 else:
                     logger.info(f"插入新账号: {name}, {platform}, {account_id}")
                     # 插入新账号
                     try:
+                        # 只有当account_id不为空时才检查它的唯一性
+                        if account_id and account_id.strip():
+                            # 检查account_id是否已存在
+                            cursor.execute("SELECT id FROM accounts WHERE platform=? AND account_id=?", 
+                                          (platform, account_id))
+                            existing_account_id = cursor.fetchone()
+                            if existing_account_id:
+                                logger.warning(f"账号ID已存在: {platform}, {account_id}, 尝试使用其他识别方式")
+                                
                         cursor.execute('''
                             INSERT INTO accounts 
                             (name, platform, account_id, details, created_at, updated_at)
@@ -129,23 +127,27 @@ class SQLiteDatabase(DatabaseInterface):
                         ''', (name, platform, account_id or "", details_json, timestamp, timestamp))
                         account_db_id = cursor.lastrowid
                     except sqlite3.IntegrityError as e:
+                        logger.error(f"插入账号时发生完整性错误: {e}, 账号: {name}, 平台: {platform}, ID: {account_id}")
                         if "UNIQUE constraint failed" in str(e):
                             # 发生唯一约束冲突，尝试获取已存在记录的ID
                             logger.warning(f"账号已存在 ({name}, {platform}, {account_id}), 尝试获取已有ID")
                             
-                            # 再次查询可能是多个条件组合导致的冲突
+                            # 冲突后，精确查找匹配的账号
                             cursor.execute(
-                                "SELECT id FROM accounts WHERE (platform=? AND account_id=?) OR (platform=? AND name=?)", 
-                                (platform, account_id or "", platform, name)
+                                "SELECT id FROM accounts WHERE platform=? AND name=?", 
+                                (platform, name)
                             )
                             existing = cursor.fetchone()
                             if existing:
                                 account_db_id = existing[0]
+                                logger.info(f"成功获取已有账号ID: {account_db_id} ({name}, {platform}, {account_id})")
                             else:
-                                # 如果还是找不到，抛出原始异常
+                                # 如果还是找不到，记录详细错误并抛出原始异常
+                                logger.error(f"唯一约束冲突后无法找到账号: {name}, 平台: {platform}, ID: {account_id}")
                                 raise
                         else:
-                            # 其他完整性错误，重新抛出
+                            # 其他完整性错误，记录详细信息并重新抛出
+                            logger.error(f"插入账号时发生完整性错误: {e}, 账号: {name}, 平台: {platform}, ID: {account_id}")
                             raise
                 
                 conn.commit()
@@ -154,7 +156,8 @@ class SQLiteDatabase(DatabaseInterface):
                 return str(account_db_id)
                 
             except Exception as e:
-                logger.error(f"保存账号失败: {e}")
+                error_type = type(e).__name__
+                logger.error(f"保存账号失败: [{error_type}] {e}, 账号: {name}, 平台: {platform}, ID: {account_id}")
                 conn.rollback()
                 conn.close()
                 return None
@@ -218,35 +221,31 @@ class SQLiteDatabase(DatabaseInterface):
                 existing = cursor.fetchone()
                 
                 if existing:
-                    # 更新已有文章
-                    article_id = existing[0]
-                    cursor.execute('''
-                        UPDATE articles SET 
-                        account_id=?, title=?, content=?, details=?, updated_at=?
-                        WHERE id=?
-                    ''', (
-                        account_id, title, content or "", details_json, timestamp, article_id
-                    ))
+                    logger.info(f"文章已存在, title: {title}")
                 else:
                     # 插入新文章
-                    cursor.execute('''
+                    logger.info(f"插入新文章, title: {title}")
+                    try:
+                        cursor.execute('''
                         INSERT INTO articles 
                         (account_id, title, url, publish_time, publish_timestamp, content, details, created_at, updated_at)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ''', (
-                        account_id, title, url, publish_time or "", publish_timestamp,
-                        content or "", details_json, timestamp, timestamp
-                    ))
-                
-                conn.commit()
-                conn.close()
-                return True
-                
+                        ''', (
+                            account_id, title, url, publish_time or "", publish_timestamp,
+                            content or "", details_json, timestamp, timestamp
+                        ))
+                        conn.commit()
+                        return True
+                    except Exception as e:
+                        logger.error(f"插入文章失败: {e}")
+                        return False
+                    
             except Exception as e:
                 logger.error(f"保存文章失败: {e}")
+                return False
+            finally:
                 conn.rollback()
                 conn.close()
-                return False
     
     def get_articles(self, account_id: Optional[str] = None, platform: Optional[str] = None,
                    start_date: Optional[str] = None, end_date: Optional[str] = None, 

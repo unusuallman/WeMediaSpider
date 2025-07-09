@@ -2,3 +2,5 @@ __pycache__
 wechat_cache.json
 accounts.txt
 results
+logs
+output
