@@ -25,7 +25,7 @@
 - **断点续爬**: 支持中断后继续爬取
 - **命令行接口**: 提供便捷的命令行工具
 - **markdown转换**: 支持将爬取的HTML转为markdown格式
-- **定时爬取**: 支持每天定时自动爬取公众号文章
+- **定时爬取**: 支持每两小时定时自动爬取公众号文章
 
 ## 安装方法
 
@@ -92,7 +92,7 @@ python main.py wechat batch "账号列表文件.txt" -p 10 -d 30 -c -t 3 -o "输
 
 ### 定时爬虫使用
 
-项目提供了定时爬虫脚本 `scheduled_spider.py`，用于每天自动爬取公众号文章：
+项目提供了定时爬虫脚本 `scheduled_spider.py`，用于每两小时自动爬取公众号文章：
 
 #### 准备工作
 
@@ -116,7 +116,7 @@ pip install schedule
 python scheduled_spider.py
 ```
 
-脚本会使用Python的schedule库设置定时任务，默认每天在配置的时间自动执行爬取任务。脚本会保持运行并在后台等待执行时间。
+脚本会使用Python的schedule库设置定时任务，默认每两小时自动执行爬取任务。脚本会保持运行并在后台等待执行时间。
 
 如果想立即执行爬取任务（不等待到设定时间），可以使用以下命令：
 ```bash
@@ -138,7 +138,7 @@ python scheduled_spider.py --now
 - `db_type`: 数据库类型
 - `log_file`: 日志文件路径
 - `log_level`: 日志级别
-- `schedule_time`: 定时任务执行时间，24小时制，如"14:30"表示下午2点30分
+- `schedule_interval`: 定时任务执行间隔(小时)，默认为2小时
 
 #### 在生产环境中运行
 

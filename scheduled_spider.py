@@ -5,7 +5,7 @@
 定时爬虫脚本
 ======================
 
-使用schedule库实现每天9点自动爬取accounts.txt中配置的公众号列表中的文章
+使用schedule库实现每两小时自动爬取accounts.txt中配置的公众号列表中的文章
 
 使用方法:
 1. 在accounts.txt中添加要爬取的公众号名称，每行一个
@@ -41,7 +41,7 @@ CONFIG = {
     "db_type": "sqlite",             # 数据库类型
     "log_file": "logs/scheduled_spider.log", # 日志文件路径
     "log_level": "INFO",             # 日志级别
-    "schedule_time": "14:30",        # 定时任务执行时间 (24小时制)
+    "schedule_interval": 2,          # 定时任务执行间隔(小时)
 }
 
 def setup_environment():
@@ -106,9 +106,9 @@ def run_spider():
 
 def setup_schedule():
     """设置定时任务计划"""
-    # 使用配置中的时间设置定时任务
-    schedule.every().day.at(CONFIG["schedule_time"]).do(run_spider)
-    logger.info(f"已设置定时任务: 每天{CONFIG['schedule_time']}执行爬取")
+    # 设置每两小时执行一次爬取任务
+    schedule.every(CONFIG["schedule_interval"]).hours.do(run_spider)
+    logger.info(f"已设置定时任务: 每{CONFIG['schedule_interval']}小时执行爬取")
     
     # 显示下次执行时间
     next_run = schedule.next_run()
