@@ -79,7 +79,8 @@ class MySQLDatabase(DatabaseInterface):
     
     def save_article(self, account_id: str, title: str, url: str, 
                     publish_time: Optional[str] = None, content: Optional[str] = None, 
-                    details: Optional[Dict[str, Any]] = None) -> bool:
+                    details: Optional[Dict[str, Any]] = None,
+                    summary: Optional[str] = None) -> bool:
         """保存文章（示例框架，需实现）"""
         raise NotImplementedError("MySQL实现需要完成此方法")
     
@@ -92,6 +93,18 @@ class MySQLDatabase(DatabaseInterface):
     
     def count_articles(self, account_id: Optional[str] = None, platform: Optional[str] = None) -> int:
         """统计文章数量（示例框架，需实现）"""
+        raise NotImplementedError("MySQL实现需要完成此方法")
+    
+    def get_article_by_id(self, article_id: str) -> Optional[Dict[str, Any]]:
+        """根据ID获取单篇文章（示例框架，需实现）"""
+        raise NotImplementedError("MySQL实现需要完成此方法")
+    
+    def update_article_summary(self, article_id: str, summary: str) -> bool:
+        """更新文章摘要（示例框架，需实现）"""
+        raise NotImplementedError("MySQL实现需要完成此方法")
+    
+    def get_article_summary(self, article_id: str) -> Optional[str]:
+        """获取文章摘要（示例框架，需实现）"""
         raise NotImplementedError("MySQL实现需要完成此方法")
     
     def get_platforms(self) -> List[str]:

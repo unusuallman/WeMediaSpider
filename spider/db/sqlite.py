@@ -66,6 +66,7 @@ class SQLiteDatabase(DatabaseInterface):
                     publish_time TEXT,
                     publish_timestamp INTEGER,
                     content TEXT,
+                    summary TEXT,
                     details TEXT,
                     created_at INTEGER DEFAULT (strftime('%s', 'now')),
                     updated_at INTEGER DEFAULT (strftime('%s', 'now')),
@@ -79,10 +80,31 @@ class SQLiteDatabase(DatabaseInterface):
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_articles_timestamp ON articles(publish_timestamp)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_accounts_platform ON accounts(platform)')
             
+            # 检查并更新表结构
+            self._migrate_database(conn)
+            
             conn.commit()
             conn.close()
             
             logger.info(f"数据库初始化完成: {self.db_file}")
+    
+    def _migrate_database(self, conn) -> None:
+        """迁移数据库结构，添加新字段"""
+        cursor = conn.cursor()
+        
+        # 检查articles表是否有summary字段
+        cursor.execute("PRAGMA table_info(articles)")
+        columns = [column[1] for column in cursor.fetchall()]
+        
+        if "summary" not in columns:
+            logger.info("正在添加summary字段到articles表...")
+            try:
+                cursor.execute("ALTER TABLE articles ADD COLUMN summary TEXT")
+                conn.commit()
+                logger.info("成功添加summary字段")
+            except Exception as e:
+                logger.error(f"添加summary字段失败: {e}")
+                conn.rollback()
     
     def save_account(self, name: str, platform: str, account_id: Optional[str] = None, 
                     details: Optional[Dict[str, Any]] = None) -> Optional[str]:
@@ -196,7 +218,7 @@ class SQLiteDatabase(DatabaseInterface):
     
     def save_article(self, account_id: str, title: str, url: str, 
                     publish_time: Optional[str] = None, content: Optional[str] = None, 
-                    details: Optional[Dict[str, Any]] = None) -> bool:
+                    details: Optional[Dict[str, Any]] = None, summary: Optional[str] = None) -> bool:
         """保存文章"""
         with self.lock:
             conn = sqlite3.connect(self.db_file)
@@ -222,29 +244,31 @@ class SQLiteDatabase(DatabaseInterface):
                 
                 if existing:
                     logger.info(f"文章已存在, title: {title}")
+                    return False
                 else:
                     # 插入新文章
                     logger.info(f"插入新文章, title: {title}")
                     try:
                         cursor.execute('''
                         INSERT INTO articles 
-                        (account_id, title, url, publish_time, publish_timestamp, content, details, created_at, updated_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        (account_id, title, url, publish_time, publish_timestamp, content, summary, details, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ''', (
                             account_id, title, url, publish_time or "", publish_timestamp,
-                            content or "", details_json, timestamp, timestamp
+                            content or "", summary or "", details_json, timestamp, timestamp
                         ))
                         conn.commit()
                         return True
                     except Exception as e:
                         logger.error(f"插入文章失败: {e}")
+                        conn.rollback()
                         return False
                     
             except Exception as e:
                 logger.error(f"保存文章失败: {e}")
+                conn.rollback()
                 return False
             finally:
-                conn.rollback()
                 conn.close()
     
     def get_articles(self, account_id: Optional[str] = None, platform: Optional[str] = None,
@@ -289,8 +313,8 @@ class SQLiteDatabase(DatabaseInterface):
             if keywords:
                 keyword_conditions = []
                 for keyword in keywords:
-                    keyword_conditions.append("(title LIKE ? OR content LIKE ?)")
-                    params.extend([f'%{keyword}%', f'%{keyword}%'])
+                    keyword_conditions.append("(title LIKE ? OR content LIKE ? OR summary LIKE ?)")
+                    params.extend([f'%{keyword}%', f'%{keyword}%', f'%{keyword}%'])
                     
                 if keyword_conditions:
                     base_query += " AND (" + " OR ".join(keyword_conditions) + ")"
@@ -316,6 +340,38 @@ class SQLiteDatabase(DatabaseInterface):
             conn.close()
             return articles
     
+    def get_article_by_id(self, article_id: str) -> Optional[Dict[str, Any]]:
+        """根据ID获取单篇文章
+        
+        Args:
+            article_id: 文章ID
+            
+        Returns:
+            Dict[str, Any] or None: 文章信息，不存在则返回None
+        """
+        with self.lock:
+            conn = sqlite3.connect(self.db_file)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            cursor.execute("SELECT * FROM articles WHERE id=?", (article_id,))
+            row = cursor.fetchone()
+            
+            if not row:
+                conn.close()
+                return None
+                
+            article = dict(row)
+            # 解析details字段
+            if 'details' in article and article['details']:
+                try:
+                    article['details'] = json.loads(article['details'])
+                except:
+                    article['details'] = {}
+            
+            conn.close()
+            return article
+    
     def count_articles(self, account_id: Optional[str] = None, platform: Optional[str] = None) -> int:
         """统计文章数量"""
         with self.lock:
@@ -339,6 +395,75 @@ class SQLiteDatabase(DatabaseInterface):
             count = cursor.fetchone()[0]
             conn.close()
             return count
+    
+    def update_article_summary(self, article_id: str, summary: str) -> bool:
+        """更新文章摘要
+        
+        Args:
+            article_id: 文章ID
+            summary: 文章摘要内容
+            
+        Returns:
+            bool: 更新是否成功
+        """
+        with self.lock:
+            conn = sqlite3.connect(self.db_file)
+            cursor = conn.cursor()
+            timestamp = int(time.time())
+            
+            try:
+                # 检查文章是否存在
+                cursor.execute("SELECT id FROM articles WHERE id=?", (article_id,))
+                existing = cursor.fetchone()
+                
+                if not existing:
+                    logger.error(f"文章不存在，无法更新摘要: article_id={article_id}")
+                    return False
+                
+                # 更新文章摘要
+                cursor.execute(
+                    "UPDATE articles SET summary=?, updated_at=? WHERE id=?", 
+                    (summary, timestamp, article_id)
+                )
+                conn.commit()
+                logger.info(f"成功更新文章摘要: article_id={article_id}")
+                return True
+                
+            except Exception as e:
+                logger.error(f"更新文章摘要失败: {e}, article_id={article_id}")
+                conn.rollback()
+                return False
+            finally:
+                conn.close()
+    
+    def get_article_summary(self, article_id: str) -> Optional[str]:
+        """获取文章摘要
+        
+        Args:
+            article_id: 文章ID
+            
+        Returns:
+            Optional[str]: 文章摘要内容，不存在则返回None
+        """
+        with self.lock:
+            conn = sqlite3.connect(self.db_file)
+            cursor = conn.cursor()
+            
+            try:
+                cursor.execute("SELECT summary FROM articles WHERE id=?", (article_id,))
+                result = cursor.fetchone()
+                
+                if not result:
+                    logger.info(f"文章不存在，无法获取摘要: article_id={article_id}")
+                    return None
+                
+                return result[0]
+                
+            except Exception as e:
+                logger.error(f"获取文章摘要失败: {e}, article_id={article_id}")
+                return None
+            finally:
+                conn.close()
     
     def get_platforms(self) -> List[str]:
         """获取所有平台类型"""

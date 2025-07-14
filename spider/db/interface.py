@@ -65,7 +65,8 @@ class DatabaseInterface(abc.ABC):
                     url: str, 
                     publish_time: Optional[str] = None, 
                     content: Optional[str] = None, 
-                    details: Optional[Dict[str, Any]] = None) -> bool:
+                    details: Optional[Dict[str, Any]] = None,
+                    summary: Optional[str] = None) -> bool:
         """
         保存文章
         
@@ -76,6 +77,7 @@ class DatabaseInterface(abc.ABC):
             publish_time: 发布时间
             content: 文章内容
             details: 其他详情
+            summary: 文章摘要
             
         Returns:
             bool: 是否保存成功
@@ -121,6 +123,46 @@ class DatabaseInterface(abc.ABC):
             
         Returns:
             int: 文章数量
+        """
+        pass
+    
+    @abc.abstractmethod
+    def get_article_by_id(self, article_id: str) -> Optional[Dict[str, Any]]:
+        """
+        根据ID获取单篇文章
+        
+        Args:
+            article_id: 文章ID
+            
+        Returns:
+            Dict[str, Any] or None: 文章信息，不存在则返回None
+        """
+        pass
+    
+    @abc.abstractmethod
+    def update_article_summary(self, article_id: str, summary: str) -> bool:
+        """
+        更新文章摘要
+        
+        Args:
+            article_id: 文章ID
+            summary: 文章摘要内容
+            
+        Returns:
+            bool: 更新是否成功
+        """
+        pass
+    
+    @abc.abstractmethod
+    def get_article_summary(self, article_id: str) -> Optional[str]:
+        """
+        获取文章摘要
+        
+        Args:
+            article_id: 文章ID
+            
+        Returns:
+            Optional[str]: 文章摘要内容，不存在则返回None
         """
         pass
     
