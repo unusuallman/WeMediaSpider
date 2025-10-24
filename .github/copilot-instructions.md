@@ -1,0 +1,23 @@
+- **Project Scope**: `spider/wechat` houses the production-ready crawler; other platform folders are stubs.
+- **Entry Points**: Use `python main.py wechat <command>` or `uv run main.py ...` after `uv sync`; `main.py` wires CLI to `WeChatSpiderRunner`.
+- **One-Time Login**: Run `python main.py wechat login` to populate `wechat_cache.json`; subsequent commands load the cache via `WeChatSpiderLogin.is_logged_in()`.
+- **Login Automation**: `spider/wechat/login.py` chooses Safari on macOS and Chrome elsewhere; ensure the matching WebDriver is installed and avoid closing the window before QR scan succeeds.
+- **Cache Duration**: Tokens persist ~96h (`CACHE_EXPIRE_HOURS`); use `WeChatSpiderLogin.clear_cache()` or delete `wechat_cache.json` if WeChat invalidates the session.
+- **HTTP Layer**: `spider/wechat/utils.py` issues authenticated `requests` calls to `mp.weixin.qq.com`; headers must include the cookie string from `WeChatSpiderLogin.get_headers()`.
+- **Article Pagination**: `WeChatScraper.get_account_articles()` pulls 5 items per page and advances `start_page` by 5; adjust `max_pages` to control API volume.
+- **Date Filtering**: Downstream flows rely on `WeChatScraper.filter_articles_by_date()`; pass `days` or explicit `start_date`/`end_date` strings to avoid post-filter surprises.
+- **Content Fetch**: Passing `include_content=True` triggers per-article requests via `get_article_content()`, with sleeps driven by `request_interval`; respect this to avoid rate limiting.
+- **Batch Runner**: `BatchWeChatScraper.start_batch_scrape()` expects a config dict with `accounts`, `token`, `headers`, `start_date`, `end_date`, etc.; `run.batch_scrape()` builds this for you.
+- **Threading Model**: Enabling `threads>1` uses a shared `WeChatScraper` inside `ThreadPoolExecutor`; keep `max_workers` modest to prevent WeChat throttling.
+- **CSV Output**: Results land in UTF-8 BOM CSV via `WeChatScraper.save_articles_to_csv()`; per-account scrapes default to `<account>_timestamp.csv`, batch writes `output_dir/wechat_articles.csv`.
+- **Database Layer**: `DatabaseFactory.create_database()` returns a `DatabaseORM` backed by SQLAlchemy models in `spider/db/models.py`; SQLite is default, other engines need `pymysql` or `psycopg2`.
+- **Account Upsert Semantics**: `DatabaseORM.save_account()` merges existing rows keyed by `(platform,name)` and updates `details`; plan for JSON payloads under that column.
+- **Article Deduping**: `DatabaseORM.save_article()` rejects duplicates purely on URL; expect a `False` return when reprocessing historical exports.
+- **Scheduled Jobs**: `scheduled_spider.py` reads `CONFIG`, ensures `logs/` and output directories, and loops `schedule.run_pending()`; `--now` triggers an immediate scrape before scheduling.
+- **Rate Controls**: Batch scraping staggers accounts with `account_interval` defaults of 15-30s; tweak config instead of inserting manual sleeps.
+- **Logging**: Always use `spider.log.utils.setup_logger()` to get the loguru instance; CLI commands expose `--log-file`/`--log-level` so surface new output via structured logs, not prints.
+- **Sidecar Files**: Expect `wechat_cache.json`, `content_spider.db`, and per-run CSVs in the workspace root or chosen output directory; avoid hardcoding absolute paths.
+- **Extending Platforms**: Mirror `spider/wechat/run.py` when adding Weibo/Zhihu runners—provide a runner class, quick login path, and CLI subcommands hooking into `main.py`.
+- **Development Workflow**: There is no test suite; validate changes by running targeted commands like `uv run main.py wechat single "账号" --content --db` or executing `scheduled_spider.py --now`.
+- **Network Assumptions**: All critical paths hit live WeChat endpoints; write code that tolerates HTTP failures, `base_resp` error codes, and retries rather than assuming local mocks.
+- **Coding Conventions**: Prefer the module-level `logger` for messaging, keep new utilities inside `spider/wechat/utils.py`, and follow the existing pattern of returning booleans for CLI-friendly exit codes.

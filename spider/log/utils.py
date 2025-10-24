@@ -12,36 +12,36 @@
 
 import os
 import sys
-from loguru import logger
+from loguru import logger as _logger
 
 def setup_logger(log_file=None, log_level="INFO"):
     """
     设置日志记录器
     
     参数:
-        log_file (str, optional): 日志文件路径，默认为None（只输出到控制台）
-        log_level (str, optional): 日志级别，默认为INFO
+        log_file (str, optional): 日志文件路径, 默认为None(只输出到控制台)
+        log_level (str, optional): 日志级别, 默认为INFO
     
     返回:
         logger: 配置好的logger实例
     """
     # 移除默认处理器
-    logger.remove()
+    _logger.remove()
     
     # 添加控制台处理器
-    logger.add(
+    _logger.add(
         sys.stderr,
         format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
         level=log_level
     )
     
-    # 如果提供了日志文件路径，添加文件处理器
+    # 如果提供了日志文件路径, 添加文件处理器
     if log_file:
         log_dir = os.path.dirname(log_file)
         if log_dir and not os.path.exists(log_dir):
             os.makedirs(log_dir)
             
-        logger.add(
+        _logger.add(
             log_file,
             rotation="10 MB",  # 每个日志文件最大10MB
             retention="1 week",  # 保留1周的日志
@@ -49,7 +49,7 @@ def setup_logger(log_file=None, log_level="INFO"):
             level=log_level
         )
     
-    return logger
+    return _logger
 
 # 初始化默认日志配置
-logger = setup_logger() 
+logger = setup_logger()

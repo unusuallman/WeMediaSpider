@@ -5,8 +5,8 @@
 微信公众号爬虫 - 爬取模块
 ======================
 
-提供微信公众号文章爬取的核心功能，支持单个公众号爬取和批量爬取。
-不依赖于任何GUI界面，可作为独立模块使用。
+提供微信公众号文章爬取的核心功能, 支持单个公众号爬取和批量爬取。
+不依赖于任何GUI界面, 可作为独立模块使用。
 
 主要功能:
     1. 单个爬取 - 爬取单个公众号的文章
@@ -23,13 +23,11 @@
 版本: 1.0
 """
 
-import json
 import os
 import csv
 import random
 import time
-import threading
-from datetime import datetime, date, timedelta
+from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # 导入日志模块
@@ -46,12 +44,12 @@ class WeChatScraper:
         
         Args:
             token: 访问token
-            headers: 请求头（包含cookie等信息）
+            headers: 请求头(包含cookie等信息)
         """
         self.token = token
         self.headers = headers
         
-        # 请求间隔范围（秒）
+        # 请求间隔范围(秒)
         self.request_delay = (1, 3)
         
         # 回调函数
@@ -75,7 +73,7 @@ class WeChatScraper:
         设置回调函数
         
         Args:
-            event_type: 事件类型（progress/error/complete/status）
+            event_type: 事件类型(progress/error/complete/status)
             callback_func: 回调函数
         """
         if event_type in self.callbacks:
@@ -107,7 +105,7 @@ class WeChatScraper:
         
         Args:
             account_name: 公众号名称
-            fakeid: 公众号fakeid，如果为None则自动搜索
+            fakeid: 公众号fakeid, 如果为None则自动搜索
             max_pages: 最大页数限制
             
         Returns:
@@ -118,7 +116,7 @@ class WeChatScraper:
             return []
         
         try:
-            # 如果未提供fakeid，则尝试搜索获取
+            # 如果未提供fakeid, 则尝试搜索获取
             if not fakeid:
                 search_results = self.search_account(account_name)
                 if not search_results:
@@ -127,7 +125,7 @@ class WeChatScraper:
                 
                 fakeid = search_results[0]['wpub_fakid']
             
-            self._trigger_status(account_name, "fetching", f"正在获取文章列表...")
+            self._trigger_status(account_name, "fetching", "正在获取文章列表...")
             
             all_articles = []
             page_start = 0
@@ -204,8 +202,8 @@ class WeChatScraper:
         
         Args:
             articles: 文章列表
-            start_date: 开始日期，格式为YYYY-MM-DD或datetime.date对象
-            end_date: 结束日期，格式为YYYY-MM-DD或datetime.date对象
+            start_date: 开始日期, 格式为YYYY-MM-DD或datetime.date对象
+            end_date: 结束日期, 格式为YYYY-MM-DD或datetime.date对象
             
         Returns:
             list: 过滤后的文章列表
@@ -260,12 +258,13 @@ class WeChatScraper:
                 
                 # 写入数据行
                 for article in articles:
+                    content = article.get('content', '').replace('\n', '\\n').replace('\r', '\\r')
                     writer.writerow([
                         article['name'],
                         article['title'],
                         article.get('publish_time', ''),
                         article['link'],
-                        article.get('content', '')
+                        content
                     ])
                     
             return True
@@ -345,14 +344,14 @@ class BatchWeChatScraper:
         开始批量爬取
         
         Args:
-            config: 爬取配置，包含以下字段:
+            config: 爬取配置, 包含以下字段:
                 - accounts: 公众号列表
                 - start_date: 开始日期
                 - end_date: 结束日期
                 - token: 访问token
                 - headers: 请求头
-                - output_file: 输出文件（可选）
-                - 其他配置参数（见default_config）
+                - output_file: 输出文件(可选)
+                - 其他配置参数(见default_config)
                 
         Returns:
             list: 爬取的文章列表
@@ -373,8 +372,8 @@ class BatchWeChatScraper:
         try:
             start_date = datetime.strptime(config['start_date'], '%Y-%m-%d').date()
             end_date = datetime.strptime(config['end_date'], '%Y-%m-%d').date()
-        except:
-            self._trigger_error("系统", "日期格式错误，应为YYYY-MM-DD")
+        except Exception:
+            self._trigger_error("系统", "日期格式错误, 应为YYYY-MM-DD")
             return []
         
         if start_date > end_date:
@@ -431,7 +430,7 @@ class BatchWeChatScraper:
                 articles = self._scrape_single_account(config, account, start_date, end_date)
                 all_articles.extend(articles)
                 
-                self._trigger_account_status(account, "completed", f"完成，获得 {len(articles)} 篇文章")
+                self._trigger_account_status(account, "completed", f"完成, 获得 {len(articles)} 篇文章")
                 
                 # 账号间延迟
                 if i < total_accounts - 1:
@@ -484,7 +483,7 @@ class BatchWeChatScraper:
                     all_articles.extend(articles)
                     
                     self._trigger_account_status(
-                        account, "completed", f"完成，获得 {len(articles)} 篇文章"
+                        account, "completed", f"完成, 获得 {len(articles)} 篇文章"
                     )
                     
                 except Exception as e:

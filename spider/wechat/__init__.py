@@ -5,8 +5,8 @@
 微信公众号爬虫核心模块
 ==================
 
-提供微信公众号文章爬取的核心功能，
-不依赖于任何GUI界面，可以被导入到任何项目中使用。
+提供微信公众号文章爬取的核心功能, 
+不依赖于任何GUI界面, 可以被导入到任何项目中使用。
 
 核心功能:
     1. 自动登录 - 自动获取token和cookie
@@ -21,5 +21,14 @@ __version__ = "1.0"
 __author__ = "seanzhang-zhichen"
 
 from .login import WeChatSpiderLogin
-from .scraper import WeChatScraper, BatchWeChatScraper
-from .utils import get_timestamp, format_time 
+from .scraper import BatchWeChatScraper, WeChatScraper
+from .utils import format_time, get_timestamp
+
+
+__all__ = [
+    "WeChatSpiderLogin",
+    "WeChatScraper",
+    "BatchWeChatScraper",
+    "format_time",
+    "get_timestamp",
+]

@@ -5,8 +5,8 @@
 微信公众号爬虫 - 登录模块
 =======================
 
-提供微信公众平台自动登录功能，获取爬虫所需的token和cookie。
-使用Selenium模拟浏览器操作，实现扫码登录并缓存登录信息。
+提供微信公众平台自动登录功能, 获取爬虫所需的token和cookie。
+使用Selenium模拟浏览器操作, 实现扫码登录并缓存登录信息。
 
 主要功能:
     1. 自动登录 - 启动浏览器并打开登录页面
@@ -26,14 +26,12 @@
 import json
 import os
 import random
-import time
 import platform
 import tempfile
 import shutil
 import subprocess
 from datetime import datetime, timedelta
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import requests
@@ -44,7 +42,7 @@ from spider.log.utils import logger
 
 # 配置常量
 CACHE_FILE = 'wechat_cache.json'
-CACHE_EXPIRE_HOURS = 24 * 4  # 缓存有效期（小时），4天
+CACHE_EXPIRE_HOURS = 24 * 4  # 缓存有效期(小时), 4天
 
 
 class WeChatSpiderLogin:
@@ -85,7 +83,7 @@ class WeChatSpiderLogin:
     def load_cache(self):
         """从缓存文件加载token和cookies"""
         if not os.path.exists(self.cache_file):
-            logger.info("缓存文件不存在，需要重新登录")
+            logger.info("缓存文件不存在, 需要重新登录")
             return False
         
         try:
@@ -97,16 +95,16 @@ class WeChatSpiderLogin:
             hours_diff = (current_time - cache_time).total_seconds() / 3600
             
             if hours_diff > self.cache_expire_hours:
-                logger.info(f"缓存已过期（{hours_diff:.1f}小时前），需要重新登录")
+                logger.info(f"缓存已过期({hours_diff:.1f}小时前), 需要重新登录")
                 return False
             
             self.token = cache_data['token']
             self.cookies = cache_data['cookies']
-            logger.info(f"从缓存加载登录信息（{hours_diff:.1f}小时前保存）")
+            logger.info(f"从缓存加载登录信息({hours_diff:.1f}小时前保存)")
             return True
             
         except Exception as e:
-            logger.error(f"读取缓存失败: {e}，需要重新登录")
+            logger.error(f"读取缓存失败: {e}, 需要重新登录")
             return False
 
     def validate_cache(self):
@@ -175,12 +173,16 @@ class WeChatSpiderLogin:
 
     def _setup_chrome_options(self):
         """设置Chrome选项"""
-        options = webdriver.ChromeOptions()
-        
+        try:
+            options = webdriver.ChromeOptions()
+        except Exception as e:
+            logger.error(f"初始化Chrome浏览器选项失败: {e}")
+            return None
+
         # 创建临时目录保存用户数据
         self.temp_user_data_dir = tempfile.mkdtemp()
         options.add_argument(f"--user-data-dir={self.temp_user_data_dir}")
-        
+
         # 其他选项
         options.add_argument("--disable-extensions")
         options.add_argument("--disable-plugins")
@@ -188,32 +190,54 @@ class WeChatSpiderLogin:
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
-        
+
         # 页面缩放
         options.add_argument("--force-device-scale-factor=0.9")
         options.add_argument("--high-dpi-support=0.9")
-        
+
         # 对无头模式的检测进行反规避
         options.add_argument("--disable-blink-features=AutomationControlled")
-        
+
         # 自定义用户代理
         options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36")
-        
+
         return options
 
+    def _setup_safari_options(self):
+        """设置Safari选项（目前不做特殊处理）"""
+        try:
+            options = webdriver.SafariOptions()
+        except Exception as e:
+            logger.error(f"初始化Safari浏览器选项失败: {e}")
+            return None
+        # SafariOptions 暂无特殊参数设置
+        return options
+
+    def _setup_webdriver_options(self):
+        """根据平台设置WebDriver选项"""
+        system = platform.system()
+        if system == "Darwin":
+            return self._setup_safari_options()
+        else:
+            return self._setup_chrome_options()
+
     def _cleanup_chrome_processes(self):
-        """清理残留的Chrome进程"""
+        """清理残留的浏览器进程"""
         try:
             system = platform.system()
             if system == "Windows":
-                subprocess.run(["taskkill", "/F", "/IM", "chrome.exe", "/T"], 
+                subprocess.run(["taskkill", "/f", "/im", "chrome.exe", "/T"],
                               stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-            elif system in ("Linux", "Darwin"):  # Linux或Mac
-                subprocess.run(["pkill", "-f", "chrome"], 
+            elif system == "Linux":
+                subprocess.run(["pkill", "-f", "chrome"],
+                              stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+            elif system == "Darwin":  # macOS: 清理 safaridriver 进程（Safari 使用系统驱动）
+                # 仅尝试清理 safaridriver，避免不必要地杀掉用户的 Safari 进程
+                subprocess.run(["pkill", "-f", "safaridriver"],
                               stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
             logger.debug("残留浏览器进程已清理")
         except Exception as e:
-            logger.warning(f"清理Chrome进程时出现警告: {e}")
+            logger.warning(f"清理浏览器进程时出现警告: {e}")
 
     def _cleanup_temp_files(self):
         """清理临时文件"""
@@ -240,41 +264,44 @@ class WeChatSpiderLogin:
             logger.success("使用有效的缓存登录信息")
             return True
         else:
-            logger.info("缓存无效或不存在，需要重新扫码登录")
+            logger.info("缓存无效或不存在, 需要重新扫码登录")
             self.clear_cache()
         
         # 清理残留进程
         self._cleanup_chrome_processes()
         
         try:
-            logger.info("正在启动Chrome浏览器...")
+            logger.info("正在启动浏览器...")
             
-            # 配置Chrome选项
-            chrome_options = self._setup_chrome_options()
+            # 根据平台选择浏览器驱动
+            system = platform.system()
+            if system == "Darwin":
+                # 使用 SafariDriver（macOS）
+                safari_options = self._setup_safari_options()
+                try:
+                    self.driver = webdriver.Safari(options=safari_options)
+                    logger.success("Safari 浏览器启动成功")
+                except Exception as e:
+                    logger.error(f"Safari 浏览器启动失败: {e}")
+                    return False
+            else:
+                # 非 macOS 使用 Chrome
+                chrome_options = self._setup_chrome_options()
+                try:
+                    self.driver = webdriver.Chrome(options=chrome_options)
+                    logger.success("Chrome浏览器启动成功")
+                except Exception as e:
+                    logger.error(f"Chrome浏览器启动失败: {e}")
+                    return False
             
-            # 创建WebDriver
-            try:
-                service = ChromeService()
-                self.driver = webdriver.Chrome(service=service, options=chrome_options)
-                logger.success("Chrome浏览器启动成功")
-            except Exception as e:
-                logger.error(f"Chrome浏览器启动失败: {e}")
-                return False
-
-            # 隐藏自动化特征
-            self.driver.execute_script(
-                "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
-            )
-
-            # 访问微信公众号平台
             logger.info("正在访问微信公众号平台...")
             self.driver.get('https://mp.weixin.qq.com/')
             logger.success("页面加载完成")
             
             logger.info("请在浏览器窗口中扫码登录...")
-            logger.info("等待登录完成（最长等待5分钟）...")
+            logger.info("等待登录完成(最长等待5分钟)...")
 
-            # 等待登录成功（URL中包含token）
+            # 等待登录成功(URL中包含token)
             wait = WebDriverWait(self.driver, 300)  # 5分钟超时
             wait.until(EC.url_contains('token'))
             
@@ -293,7 +320,7 @@ class WeChatSpiderLogin:
             # 获取cookies
             raw_cookies = self.driver.get_cookies()
             self.cookies = {item['name']: item['value'] for item in raw_cookies}
-            logger.success(f"Cookies获取成功，共{len(self.cookies)}个")
+            logger.success(f"Cookies获取成功, 共{len(self.cookies)}个")
             
             # 保存到缓存
             if self.save_cache():
@@ -312,7 +339,7 @@ class WeChatSpiderLogin:
                 try:
                     self.driver.quit()
                     logger.debug("浏览器已关闭")
-                except:
+                except Exception:
                     pass
             
             self._cleanup_chrome_processes()
@@ -343,7 +370,7 @@ class WeChatSpiderLogin:
                     'token': self.token,
                     'message': f'已登录 {round(hours_since_login, 1)} 小时'
                 }
-            except:
+            except Exception:
                 pass
         
         return {
@@ -377,7 +404,7 @@ class WeChatSpiderLogin:
         获取token
         
         Returns:
-            str: token字符串，如果未登录返回None
+            str: token字符串, 如果未登录返回None
         """
         if not self.token and not (self.load_cache() and self.validate_cache()):
             return None
@@ -388,7 +415,7 @@ class WeChatSpiderLogin:
         获取cookies字典
         
         Returns:
-            dict: cookies字典，如果未登录返回None
+            dict: cookies字典, 如果未登录返回None
         """
         if not self.cookies and not (self.load_cache() and self.validate_cache()):
             return None
@@ -399,7 +426,7 @@ class WeChatSpiderLogin:
         获取cookie字符串格式
         
         Returns:
-            str: cookie字符串，如果未登录返回None
+            str: cookie字符串, 如果未登录返回None
         """
         cookies = self.get_cookies()
         if not cookies:
@@ -413,7 +440,7 @@ class WeChatSpiderLogin:
         获取标准的HTTP请求头
         
         Returns:
-            dict: 包含cookie和user-agent的请求头，如果未登录返回None
+            dict: 包含cookie和user-agent的请求头, 如果未登录返回None
         """
         cookie_string = self.get_cookie_string()
         if not cookie_string:
@@ -440,7 +467,7 @@ def quick_login():
     快速登录函数
     
     Returns:
-        tuple: (token, cookies, headers) 如果登录成功，否则返回 (None, None, None)
+        tuple: (token, cookies, headers) 如果登录成功, 否则返回 (None, None, None)
     """
     login_manager = WeChatSpiderLogin()
     if login_manager.login():
@@ -460,4 +487,4 @@ def check_login():
         dict: 登录状态信息
     """
     login_manager = WeChatSpiderLogin()
-    return login_manager.check_login_status() 
+    return login_manager.check_login_status()

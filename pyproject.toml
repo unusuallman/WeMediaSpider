@@ -1,0 +1,24 @@
+[project]
+name = "wemediaspider"
+version = "0.1.0"
+description = "这是一个用于爬取多平台内容的Python工具, 目前主要支持微信公众号文章爬取, 提供了完整的功能集, 包括登录、搜索公众号、批量爬取文章内容等。该工具可以通过命令行使用, 也可以作为独立的库在任何Python项目中导入使用。"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    # 核心依赖
+    "requests",
+    "selenium",
+    "beautifulsoup4",
+    # "tqdm",
+    "markdownify",
+    # 数据处理
+    "sqlalchemy",
+    "pandas",
+    "numpy",
+    # 日志
+    "loguru",
+    # 其他工具
+    "webdriver-manager",  # 自动下载和管理ChromeDriver
+    "lxml",  # 提高BeautifulSoup的解析性能
+    "schedule",  # 用于定时任务
+]

@@ -8,9 +8,9 @@
 使用schedule库实现每两小时自动爬取accounts.txt中配置的公众号列表中的文章
 
 使用方法:
-1. 在accounts.txt中添加要爬取的公众号名称，每行一个
+1. 在accounts.txt中添加要爬取的公众号名称, 每行一个
 2. 直接运行此脚本: python scheduled_spider.py
-3. 要立即执行爬取任务，使用: python scheduled_spider.py --now
+3. 要立即执行爬取任务, 使用: python scheduled_spider.py --now
 
 版本: 1.0
 """
@@ -19,9 +19,7 @@ import os
 import sys
 import time
 import datetime
-import logging
 import schedule
-from pathlib import Path
 
 # 导入爬虫功能
 from spider.log.utils import setup_logger, logger
@@ -32,7 +30,7 @@ from spider.wechat.run import batch_scrape as wechat_batch_scrape
 CONFIG = {
     "accounts_file": "accounts.txt",  # 公众号列表文件
     "pages": 1,                      # 每个公众号最大爬取页数
-    "days": 1,                       # 爬取最近几天的文章（设为1表示只爬取当天）
+    "days": 1,                       # 爬取最近几天的文章(设为1表示只爬取当天)
     "include_content": True,         # 是否获取文章内容
     "interval": 20,                  # 请求间隔(秒)
     "threads": 3,                    # 线程数
@@ -45,7 +43,7 @@ CONFIG = {
 }
 
 def setup_environment():
-    """初始化环境，创建必要的目录"""
+    """初始化环境, 创建必要的目录"""
     # 创建日志目录
     log_dir = os.path.dirname(CONFIG["log_file"])
     if log_dir and not os.path.exists(log_dir):
@@ -77,11 +75,11 @@ def run_spider():
     # 登录微信公众平台
     logger.info("登录微信公众平台...")
     if not wechat_login():
-        logger.error("微信登录失败，任务终止")
+        logger.error("微信登录失败, 任务终止")
         return False
     
     # 批量爬取公众号
-    logger.info(f"开始批量爬取公众号，来源文件: {CONFIG['accounts_file']}")
+    logger.info(f"开始批量爬取公众号, 来源文件: {CONFIG['accounts_file']}")
     result = wechat_batch_scrape(
         CONFIG["accounts_file"],
         pages=CONFIG["pages"],
@@ -130,7 +128,7 @@ def main():
     # 设置定时任务计划
     setup_schedule()
     
-    # 无限循环，运行所有计划任务
+    # 无限循环, 运行所有计划任务
     logger.info("进入任务循环等待...")
     while True:
         schedule.run_pending()

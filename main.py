@@ -5,17 +5,15 @@
 内容爬虫主模块
 ======================
 
-提供内容爬虫的通用入口，支持不同平台（微信、微博、知乎等）的爬虫功能。
+提供内容爬虫的通用入口, 支持不同平台(微信、微博、知乎等)的爬虫功能。
 可以通过命令行运行或作为库导入使用。
 
 版本: 2.0
 """
 
-import os
-import sys
 import argparse
 from spider.log.utils import setup_logger, logger
-# 目前只导入微信爬虫，后续可以添加其他平台的爬虫
+# 目前只导入微信爬虫, 后续可以添加其他平台的爬虫
 from spider.wechat.run import WeChatSpiderRunner, login as wechat_login
 from spider.wechat.run import search as wechat_search
 from spider.wechat.run import scrape_account as wechat_scrape_account
@@ -27,7 +25,7 @@ from spider.wechat.run import batch_scrape as wechat_batch_scrape
 
 
 def main():
-    """主函数，解析命令行参数并执行相应命令"""
+    """主函数, 解析命令行参数并执行相应命令"""
     parser = argparse.ArgumentParser(description="内容爬虫工具")
     subparsers = parser.add_subparsers(dest="platform", help="选择平台")
     
@@ -74,7 +72,7 @@ def main():
     wechat_batch_parser.add_argument("--log-file", help="日志文件路径")
     wechat_batch_parser.add_argument("--log-level", default="INFO", help="日志级别")
     
-    # 这里可以添加其他平台的爬虫，例如：
+    # 这里可以添加其他平台的爬虫, 例如：
     # 微博爬虫
     # weibo_parser = subparsers.add_parser("weibo", help="微博爬虫")
     # weibo_subparsers = weibo_parser.add_subparsers(dest="command", help="微博爬虫命令")
@@ -87,7 +85,7 @@ def main():
     
     args = parser.parse_args()
     
-    # 如果没有指定平台，显示帮助信息
+    # 如果没有指定平台, 显示帮助信息
     if not args.platform:
         parser.print_help()
         return 0

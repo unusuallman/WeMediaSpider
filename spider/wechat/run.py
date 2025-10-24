@@ -5,14 +5,13 @@
 微信公众号爬虫运行模块
 ======================
 
-提供微信公众号爬取功能的接口，包括登录、单个账号爬取和批量爬取功能。
+提供微信公众号爬取功能的接口, 包括登录、单个账号爬取和批量爬取功能。
 可以作为库被导入使用或通过命令行工具调用。
 
 版本: 2.0
 """
 
 import os
-import sys
 import time
 import json
 from datetime import datetime, timedelta
@@ -27,7 +26,7 @@ from spider.db.factory import DatabaseFactory
 
 
 class WeChatSpiderRunner:
-    """微信爬虫运行器，封装爬虫的主要功能"""
+    """微信爬虫运行器, 封装爬虫的主要功能"""
     
     def __init__(self):
         """初始化爬虫运行器"""
@@ -42,7 +41,7 @@ class WeChatSpiderRunner:
             logger.error("登录失败")
             return False
         
-        logger.success(f"登录成功！")
+        logger.success("登录成功！")
         logger.debug(f"Token: {token[:8]}...{token[-4:]}")
         logger.debug(f"Cookie: {len(headers['cookie'])} 个字符")
         logger.info("登录信息已保存到缓存文件")
@@ -55,7 +54,7 @@ class WeChatSpiderRunner:
         
         # 检查登录状态
         if not self.login_manager.is_logged_in():
-            logger.error("未登录或登录已过期，请先登录")
+            logger.error("未登录或登录已过期, 请先登录")
             return None
         
         token = self.login_manager.get_token()
@@ -90,7 +89,7 @@ class WeChatSpiderRunner:
         
         # 检查登录状态
         if not self.login_manager.is_logged_in():
-            logger.error("未登录或登录已过期，请先登录")
+            logger.error("未登录或登录已过期, 请先登录")
             return False
         
         token = self.login_manager.get_token()
@@ -118,7 +117,7 @@ class WeChatSpiderRunner:
         scraper.set_callback('progress', progress_callback)
         
         # 获取文章列表
-        logger.info(f"获取文章列表，最大 {pages} 页...")
+        logger.info(f"获取文章列表, 最大 {pages} 页...")
         articles = scraper.get_account_articles(
             account['wpub_name'],
             account['wpub_fakid'],
@@ -147,7 +146,7 @@ class WeChatSpiderRunner:
                 logger.info(f"获取第 {i+1}/{len(filtered_articles)} 篇文章内容...")
                 article = scraper.get_article_content_by_url(article)
                 
-                # 请求间隔，避免被限制
+                # 请求间隔, 避免被限制
                 if i < len(filtered_articles) - 1:
                     time.sleep(interval)
         
@@ -159,7 +158,7 @@ class WeChatSpiderRunner:
             output_path = f"{account['wpub_name']}_{timestamp}.csv"
         
         logger.info(f"保存结果到: {output_path}")
-        success = scraper.save_articles_to_csv(filtered_articles, output_path)
+        success_csv = scraper.save_articles_to_csv(filtered_articles, output_path)
         
         # 保存到数据库
         if use_db and filtered_articles:
@@ -182,7 +181,7 @@ class WeChatSpiderRunner:
                     logger.info(f"保存 {len(filtered_articles)} 篇文章到数据库...")
                     saved_count = 0
                     for article in filtered_articles:
-                        success = db.save_article(
+                        success_db = db.save_article(
                             account_id=account_db_id,
                             title=article.get('title', ''),
                             url=article.get('link', ''),
@@ -193,28 +192,28 @@ class WeChatSpiderRunner:
                                 'publish_timestamp': article.get('publish_timestamp', 0)
                             }
                         )
-                        if success:
+                        if success_db:
                             saved_count += 1
                     
-                    logger.success(f"数据库保存完成，成功保存 {saved_count} 篇文章: {db_file}")
+                    logger.success(f"数据库保存完成, 成功保存 {saved_count} 篇文章: {db_file}")
                 else:
-                    logger.error("保存账号失败，无法保存文章")
+                    logger.error("保存账号失败, 无法保存文章")
                     
             except ValueError as e:
                 logger.error(f"数据库初始化失败: {e}")
                 return False
         
-        if success:
-            logger.success(f"成功保存 {len(filtered_articles)} 篇文章")
+        if success_csv:
+            logger.success(f"成功保存 {len(filtered_articles)} 篇文章到 {output_path}")
             return True
         else:
-            logger.error("保存失败")
+            logger.error("保存文章到 CSV 失败")
             return False
 
     def batch_scrape(self, accounts_file, pages=10, days=30, include_content=False,
                     interval=10, threads=3, output_dir=None, use_db=False, db_type="sqlite"):
         """批量爬取多个公众号"""
-        logger.info(f"批量爬取公众号，输入文件: {accounts_file}")
+        logger.info(f"批量爬取公众号, 输入文件: {accounts_file}")
         
         # 读取公众号列表
         try:
@@ -237,7 +236,7 @@ class WeChatSpiderRunner:
         
         # 检查登录状态
         if not self.login_manager.is_logged_in():
-            logger.error("未登录或登录已过期，请先登录")
+            logger.error("未登录或登录已过期, 请先登录")
             return False
         
         token = self.login_manager.get_token()
@@ -259,7 +258,7 @@ class WeChatSpiderRunner:
                 logger.warning(f"跳过爬取: {account_name}, {message}")
         
         def batch_completed_callback(total_articles):
-            logger.success(f"批量爬取完成，总共获取 {total_articles} 篇文章")
+            logger.success(f"批量爬取完成, 总共获取 {total_articles} 篇文章")
         
         def error_callback(account_name, error_message):
             logger.error(f"爬取出错: {account_name}, {error_message}")
@@ -278,7 +277,6 @@ class WeChatSpiderRunner:
         os.makedirs(output_dir, exist_ok=True)
         
         # 准备配置
-        timestamp = int(time.time())
         config = {
             'accounts': accounts,
             'start_date': start_date.strftime('%Y-%m-%d'),
@@ -290,10 +288,10 @@ class WeChatSpiderRunner:
             'use_threading': threads > 1,
             'max_workers': threads,
             'include_content': include_content,
-            'output_file': os.path.join(output_dir, f"wechat_articles.csv")
+            'output_file': os.path.join(output_dir, "wechat_articles.csv")
         }
         
-        # 初始化数据库（如果需要）
+        # 初始化数据库(如果需要)
         db = None
         if use_db:
             db_file = os.path.join(output_dir, "content_spider.db")
@@ -354,10 +352,10 @@ class WeChatSpiderRunner:
                     logger.success(f"成功保存文章: {article.get('title', '')}")
                     saved_count += 1
             
-            logger.success(f"数据库保存完成，成功保存 {saved_count} 篇文章")
+            logger.success(f"数据库保存完成, 成功保存 {saved_count} 篇文章")
         
-        logger.info(f"\n爬取完成，耗时 {end_time - start_time:.2f} 秒")
-        logger.info(f"共获取 {len(articles)} 篇文章，已保存到 {config['output_file']}")
+        logger.info(f"\n爬取完成, 耗时 {end_time - start_time:.2f} 秒")
+        logger.info(f"共获取 {len(articles)} 篇文章, 已保存到 {config['output_file']}")
         
         if db:
             logger.info(f"数据库文件: {db_file}")
@@ -365,7 +363,7 @@ class WeChatSpiderRunner:
         return True
 
 
-# 为了保持向后兼容性，提供一些直接可调用的函数
+# 为了保持向后兼容性, 提供一些直接可调用的函数
 def login():
     """登录微信公众平台并获取token和cookie"""
     runner = WeChatSpiderRunner()
